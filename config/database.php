@@ -1,16 +1,21 @@
 <?php
 return [
-    'default' => 'mysql',
+    'default' => env('DB_CONNECTION', 'mysql'),
     'connections' => [
         'mysql' => [
-            'driver'   => 'mysql',
-            'host'     => 'localhost',
-            'database' => 'perpustakaan',
-            'username' => 'perpus_user',
-            'password' => 'LibraryPass#2024',  // VULNERABILITY: Hardcoded credential
+            'driver'    => 'mysql',
+            'host'      => env('DB_HOST', 'localhost'),
+            'port'      => env('DB_PORT', '3306'),
+            'database'  => env('DB_DATABASE', 'perpustakaan'),
+            'username'  => env('DB_USERNAME', 'perpus_user'),
+            'password'  => env('DB_PASSWORD'),
+            'charset'   => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'prefix'    => '',
+            'strict'    => true,
+            'engine'    => null,
         ],
     ],
-    // Integration credentials
-    'isbn_api_key'  => 'isbndb_api_key_prod_7f3k9m2n8p',  // VULNERABILITY
-    'google_books'  => 'AIzaSyGoogleBooksAPIKeySecretXYZ',  // VULNERABILITY
+    'isbn_api_key' => env('ISBN_DB_API_KEY'),
+    'google_books' => env('GOOGLE_BOOKS_API_KEY'),
 ];

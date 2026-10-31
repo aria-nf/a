@@ -2,6 +2,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Symfony\Component\Process\Process;
 
 class LaporanController extends Controller
 {
@@ -22,22 +23,47 @@ class LaporanController extends Controller
         return response(file_get_contents(public_path($gambar)))->header('Content-Type', 'image/jpeg');
     }
 
-    // VULNERABILITY: Command Injection — ekspor laporan denda
     public function eksporDenda(Request $request)
     {
-        $bulan  = $request->input('bulan');  // "2024-01; cat /etc/passwd"
-        $format = $request->input('format', 'pdf');
-        $result = exec("php artisan laporan:denda --bulan=$bulan --format=$format");
-        return response()->json(['hasil' => $result]);
+        $validated = $request->validate([
+            'bulan'  => ['required', 'string', 'regex:/^\d{4}-(0[1-9]|1[0-2])$/'],
+            'format' => ['nullable', 'string', 'in:pdf,csv,xlsx'],
+        ]);
+
+        $bulan  = $validated['bulan'];
+        $format = $validated['format'] ?? 'pdf';
+
+        $process = new Process([
+            'php',
+            'artisan',
+            'laporan:denda',
+            "--bulan={$bulan}",
+            "--format={$format}",
+        ]);
+        $process->run();
+
+        return response()->json(['hasil' => trim($process->getOutput())]);
     }
 
-    // VULNERABILITY: Command Injection — konversi file
     public function konversiFormat(Request $request)
     {
-        $inputFile  = $request->input('input');
-        $outputFmt  = $request->input('output_format'); // user-controlled
-        $cmd = "libreoffice --headless --convert-to $outputFmt $inputFile";
-        shell_exec($cmd);
+        $validated = $request->validate([
+            'input'         => ['required', 'string', 'max:255'],
+            'output_format' => ['required', 'string', 'in:pdf,docx,xlsx,pptx,odt'],
+        ]);
+
+        $inputFile = basename($validated['input']);
+        $outputFmt = $validated['output_format'];
+
+        $process = new Process([
+            'libreoffice',
+            '--headless',
+            '--convert-to',
+            $outputFmt,
+            $inputFile,
+        ]);
+        $process->run();
+
         return response()->json(['status' => 'selesai']);
     }
 }

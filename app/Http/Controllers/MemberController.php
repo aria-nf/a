@@ -3,28 +3,45 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 
 class MemberController extends Controller
 {
-    // VULNERABILITY: Weak hashing — MD5 untuk password anggota
     public function daftar(Request $request)
     {
-        $password = md5($request->input('password')); // MD5 lemah
+        $validated = $request->validate([
+            'nama'     => ['required', 'string', 'max:255'],
+            'nim'      => ['required', 'string', 'max:50'],
+            'email'    => ['required', 'email', 'max:255'],
+            'password' => ['required', 'string', 'min:8'],
+        ]);
+
         DB::insert("INSERT INTO members (nama, nim, email, password, role)
                     VALUES (?, ?, ?, ?, 'anggota')", [
-            $request->nama, $request->nim, $request->email, $password
+            $validated['nama'],
+            $validated['nim'],
+            $validated['email'],
+            Hash::make($validated['password']),
         ]);
+
         return response()->json(['status' => 'Pendaftaran berhasil']);
     }
 
-    // VULNERABILITY: SQL Injection + Weak hash di login
     public function masuk(Request $request)
     {
-        $nim  = $request->input('nim');
-        $pass = md5($request->input('password')); // MD5 lemah
-        $member = DB::select("SELECT * FROM members WHERE nim='$nim' AND password='$pass'");
-        if ($member) { session(['member_id' => $member[0]->id, 'role' => $member[0]->role]); }
-        return response()->json($member ? ['status' => 'ok'] : ['error' => 'NIM atau password salah'], $member ? 200 : 401);
+        $validated = $request->validate([
+            'nim'      => ['required', 'string'],
+            'password' => ['required', 'string'],
+        ]);
+
+        $member = DB::select('SELECT * FROM members WHERE nim = ? LIMIT 1', [$validated['nim']]);
+
+        if ($member && Hash::check($validated['password'], $member[0]->password)) {
+            session(['member_id' => $member[0]->id, 'role' => $member[0]->role]);
+            return response()->json(['status' => 'ok']);
+        }
+
+        return response()->json(['error' => 'NIM atau password salah'], 401);
     }
 
     // VULNERABILITY: IDOR — lihat riwayat peminjaman member lain

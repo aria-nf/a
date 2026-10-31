@@ -1,5 +1,5 @@
 {
-    "name": "stt-nf/kelompok-C-perpustakaan",
+    "name": "stt-nf/kelompok-c-perpustakaan",
     "description": "STT-NF Sistem Perpustakaan — Vulnerable Laravel App for DevSecOps Lab",
     "type": "project",
     "require": {

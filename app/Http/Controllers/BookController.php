@@ -6,26 +6,42 @@ use Illuminate\Support\Facades\DB;
 
 class BookController extends Controller
 {
-    // VULNERABILITY: SQL Injection — pencarian buku
     public function search(Request $request)
     {
-        $judul   = $request->input('judul');
-        $penulis = $request->input('penulis');
+        $judul   = $request->input('judul', '');
+        $penulis = $request->input('penulis', '');
         $tahun   = $request->input('tahun');
-        // Dangerous: semua parameter langsung masuk SQL
+
         $sql = "SELECT * FROM books
-                WHERE judul LIKE '%$judul%'
-                  AND penulis LIKE '%$penulis%'
-                  AND tahun_terbit = '$tahun'";
-        return response()->json(DB::select($sql));
+                WHERE judul LIKE ?
+                  AND penulis LIKE ?
+                  AND tahun_terbit = ?";
+
+        $books = DB::select($sql, [
+            '%' . $judul . '%',
+            '%' . $penulis . '%',
+            $tahun,
+        ]);
+
+        return response()->json($books);
     }
 
-    // VULNERABILITY: SQL Injection — filter genre + sort
     public function byGenre(Request $request)
     {
         $genre = $request->input('genre');
-        $sort  = $request->input('sort', 'judul'); // attacker controls ORDER BY
-        $books = DB::select("SELECT * FROM books WHERE genre='$genre' ORDER BY $sort ASC");
+
+        $sort = match ($request->input('sort', 'judul')) {
+            'penulis'      => 'penulis',
+            'tahun_terbit' => 'tahun_terbit',
+            'genre'        => 'genre',
+            default        => 'judul',
+        };
+
+        $books = DB::select(
+            "SELECT * FROM books WHERE genre = ? ORDER BY {$sort} ASC",
+            [$genre]
+        );
+
         return response()->json($books);
     }
 
